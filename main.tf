@@ -81,17 +81,37 @@ resource "azurerm_subnet_route_table_association" "aks-default-route" {
   route_table_id = azurerm_route_table.aks-rt.id
 }
 
+resource "azurerm_firewall_application_rule_collection" "aks_servicetag" {
+  name                = "AzureGlobalRequiredApplicationServiceTag"
+  azure_firewall_name = azurerm_firewall.azfw.name
+  resource_group_name = azurerm_resource_group.aks-azurefw.name
+  priority            = 150
+  action              = "Allow"
 
+  rule {
+    name = "AKS_ServiceTag"
 
-resource "azurerm_firewall_application_rule_collection" "aks_apprules_80" {
-  name                = "AKS_app_rules_80"
+    source_addresses = [
+      "*",
+    ]
+
+    fqdn_tags = [      
+       
+       "AzureKubernetesService",
+       
+    ]
+  }
+}
+
+resource "azurerm_firewall_application_rule_collection" "microsoft_crl" {
+  name                = "Microsoft_CRL_rules"
   azure_firewall_name = azurerm_firewall.azfw.name
   resource_group_name = azurerm_resource_group.aks-azurefw.name
   priority            = 200
   action              = "Allow"
 
   rule {
-    name = "testrule_80"
+    name = "Required CRL Rules"
 
     source_addresses = [
       "*",
@@ -99,9 +119,10 @@ resource "azurerm_firewall_application_rule_collection" "aks_apprules_80" {
 
     target_fqdns = [      
        
-       "azure.archive.ubuntu.com",
-       "security.ubuntu.com",
-       "changelogs.ubuntu.com",
+       "crl.microsoft.com",
+       "mscrl.microsoft.com",
+       "crl3.digicert.com",
+       "ocsp.digicert.com"
        
     ]
 
@@ -112,53 +133,24 @@ resource "azurerm_firewall_application_rule_collection" "aks_apprules_80" {
   }
 }
 
-resource "azurerm_firewall_application_rule_collection" "aks_apprules_443" {
-  name                = "AKS_app_rules_443"
+resource "azurerm_firewall_application_rule_collection" "ubuntu_libs" {
+  name                = "ubuntu_libaries_rules"
   azure_firewall_name = azurerm_firewall.azfw.name
   resource_group_name = azurerm_resource_group.aks-azurefw.name
-  priority            = 100
+  priority            = 250
   action              = "Allow"
 
   rule {
-    name = "azure_global_required_443"
+    name = "Ubuntu Libraries"
 
     source_addresses = [
       "*",
     ]
 
-    target_fqdns = [
-      
-       "aksrepos.azurecr.io",
-       "*.hcp.eastus2.azmk8s.io",
-       "*.hcp.central.azmk8s.io",
-       "*.hcp.eastus.azmk8s.io",
-       "*.hcp.westus.azmk8s.io",
-       "*.ods.opinsights.azure.com",
-       "*.oms.opinsights.azure.com",
-       "*.monitoring.azure.com",
-       "*.blob.core.windows.net",
-       "mcr.microsoft.com",
-       "*.cdn.mscr.io",
-       "*.azurecr.io",
-       "*.data.mcr.microsoft.com",
-       "*.management.azure.com",
-       "*.login.microsoftonline.com",
-       "ntp.ubuntu.com",
-       "packages.microsoft.com",
-       "acs-mirror.azureedge.net",
-       "*.eastus2.azmk8s.io",
-       "*.docker.io",
-       "packages.microsoft.com",
-       "*.docker.com",
-       "download.docker.com",
-       "azure.archive.ubuntu.com",
-       "security.ubuntu.com",
-       "changelogs.ubuntu.com",
-       "onegetcdn.azureedge.net",
-       "go.microsoft.com",
-       "gov-prod-policy-data.trafficmanager.net",
-       "raw.githubusercontent.com",
-       "dc.services.visualstudio.com"
+    target_fqdns = [      
+       
+       "api.snapcraft.io",
+       "motd.ubuntu.com",       
     ]
 
     protocol {
@@ -176,7 +168,7 @@ resource "azurerm_firewall_network_rule_collection" "aks_netrules_udp" {
   action              = "Allow"
 
   rule {
-    name = "AzureGlobalRequired_UDP"
+    name = "AzureGlobalRequiredNetwork_UDP"
 
     source_addresses = [
       "*",
@@ -184,7 +176,27 @@ resource "azurerm_firewall_network_rule_collection" "aks_netrules_udp" {
 
     destination_ports = [
       "1194",
-      "53",
+      "53",  
+    ]
+
+    destination_addresses = [
+      "AzureCloud.EastUS",
+      "AzureCloud.EastUS2"
+    ]
+
+    protocols = [
+      "UDP",
+    ]
+  }
+
+  rule {
+    name = "AzureGlobalRequired_NTP"
+
+    source_addresses = [
+      "*",
+    ]
+
+    destination_ports = [
       "123",
     ]
 
@@ -206,7 +218,7 @@ resource "azurerm_firewall_network_rule_collection" "aks_netrules_tcp" {
   action              = "Allow"
 
   rule {
-    name = "AzureGlobalRequired_TCP"
+    name = "AzureGlobalRequiredNetwork_TCP"
 
     source_addresses = [
       "*",
@@ -218,7 +230,8 @@ resource "azurerm_firewall_network_rule_collection" "aks_netrules_tcp" {
     ]
 
     destination_addresses = [
-      "*",
+      "AzureCloud.eastus2",
+      "AzureCloud.eastus",
     ]
 
     protocols = [
@@ -236,7 +249,7 @@ resource "azurerm_firewall_network_rule_collection" "spring_cloud_tcp" {
   action              = "Allow"
 
   rule {
-    name = "AzureGlobalRequired_TCP"
+    name = "AzureSpringCloudStorageNetwork"
 
     source_addresses = [
       "*",
